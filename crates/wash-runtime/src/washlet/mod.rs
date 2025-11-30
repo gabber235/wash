@@ -237,9 +237,13 @@ pub async fn connect_nats(
     if let Some(timeout) = options.request_timeout {
         opts = opts.request_timeout(Some(timeout));
     }
-
-    if let Some(ca_path) = options.tls_ca {
-        opts = opts.add_root_certificates(ca_path)
+    if let Some(tls_ca) = options.tls_ca {
+        anyhow::ensure!(
+            tls_ca.exists(),
+            "NATS TLS CA certificate file does not exist: {}",
+            tls_ca.display()
+        );
+        opts = opts.add_root_certificates(tls_ca);
     }
 
     if options.tls_first {
@@ -251,6 +255,11 @@ pub async fn connect_nats(
     }
 
     if let Some(credentials) = options.credentials {
+        anyhow::ensure!(
+            credentials.exists(),
+            "NATS credentials file does not exist: {}",
+            credentials.display()
+        );
         opts = opts
             .credentials_file(&credentials)
             .await
