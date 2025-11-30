@@ -223,6 +223,8 @@ pub struct NatsConnectionOptions {
     pub tls_cert: Option<PathBuf>,
     /// Path to NATS TLS private key file
     pub tls_key: Option<PathBuf>,
+    /// Path to NATS credentials file
+    pub credentials: Option<PathBuf>,
 }
 
 #[instrument(skip_all)]
@@ -246,6 +248,13 @@ pub async fn connect_nats(
 
     if let (Some(cert_path), Some(key_path)) = (options.tls_cert, options.tls_key) {
         opts = opts.add_client_certificate(cert_path, key_path)
+    }
+
+    if let Some(credentials) = options.credentials {
+        opts = opts
+            .credentials_file(&credentials)
+            .await
+            .context("failed to load NATS credentials")?;
     }
 
     opts.connect(addr)

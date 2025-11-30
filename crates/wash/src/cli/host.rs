@@ -53,6 +53,14 @@ pub struct HostCommand {
     #[clap(long = "data-nats-tls-key")]
     pub data_nats_tls_key: Option<PathBuf>,
 
+    /// Path to NATS credentials file for NATS Scheduler connection
+    #[clap(long = "scheduler-nats-creds")]
+    pub scheduler_nats_creds: Option<PathBuf>,
+
+    /// Path to NATS credentials file for NATS Data connection
+    #[clap(long = "data-nats-creds")]
+    pub data_nats_creds: Option<PathBuf>,
+
     /// The host name to assign to the host
     #[clap(long = "host-name")]
     pub host_name: Option<String>,
@@ -89,6 +97,7 @@ impl CliCommand for HostCommand {
                 tls_first: self.scheduler_nats_tls_first,
                 tls_cert: self.scheduler_nats_tls_cert.clone(),
                 tls_key: self.scheduler_nats_tls_key.clone(),
+                credentials: self.scheduler_nats_creds.clone(),
             },
         )
         .await
@@ -102,6 +111,7 @@ impl CliCommand for HostCommand {
                 tls_first: self.data_nats_tls_first,
                 tls_cert: self.data_nats_tls_cert.clone(),
                 tls_key: self.data_nats_tls_key.clone(),
+                credentials: self.data_nats_creds.clone(),
             },
         )
         .await
