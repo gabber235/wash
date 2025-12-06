@@ -37,8 +37,17 @@ spec:
             - "host"
             - "--host-name=$(WASMCLOUD_HOST_IP)"
             - "--host-group={{ .name }}"
-            - "--scheduler-nats-url=nats://nats:4222"
-            - "--data-nats-url=nats://nats:4222"
+            - "--scheduler-nats-url={{ $top.Values.runtime.nats.schedulerUrl }}"
+            - "--data-nats-url={{ $top.Values.runtime.nats.dataUrl }}"
+            {{- if $top.Values.runtime.nats.tls.ca }}
+            - "--nats-tls-ca={{ $top.Values.runtime.nats.tls.ca }}"
+            {{- end }}
+            {{- if $top.Values.runtime.nats.tls.handshakeFirst }}
+            - "--nats-tls-first"
+            {{- end }}
+            {{- if $top.Values.runtime.nats.credentials }}
+            - "--nats-creds={{ $top.Values.runtime.nats.credentials }}"
+            {{- end }}
             {{- if and (.http) (.http.enabled) }}
             - "--http-addr=0.0.0.0:9191"
             {{- end }}
@@ -56,10 +65,18 @@ spec:
               containerPort: 9191
               protocol: TCP
             {{- end }}
+          {{- with $top.Values.runtime.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           securityContext:
             capabilities:
               drop:
                 - NET_RAW
+      {{- with $top.Values.runtime.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       terminationGracePeriodSeconds: 0

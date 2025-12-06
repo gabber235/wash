@@ -24,12 +24,29 @@ spec:
         - name: runtime-operator
           image: {{ printf "%s/%s" $registry .Values.operator.image.repository }}:{{ .Values.operator.image.tag | default .Chart.AppVersion }}
           args:
-            - "-nats-url=nats://nats:4222"
+            - "-nats-url={{ .Values.operator.nats.url }}"
+            {{- if .Values.operator.nats.tls.ca }}
+            - "-nats-tls-ca={{ .Values.operator.nats.tls.ca }}"
+            {{- end }}
+            {{- if .Values.operator.nats.tls.handshakeFirst }}
+            - "-nats-tls-first"
+            {{- end }}
+            {{- if .Values.operator.nats.credentials }}
+            - "-nats-creds={{ .Values.operator.nats.credentials }}"
+            {{- end }}
           imagePullPolicy: {{ .Values.operator.image.pull_policy }}
+          {{- with .Values.operator.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           securityContext:
             capabilities:
               drop:
                 - NET_RAW
+      {{- with .Values.operator.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       terminationGracePeriodSeconds: 0
