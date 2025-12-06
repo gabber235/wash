@@ -51,6 +51,21 @@ operator:
     create: true
     # -- Annotations to add to the service account
     annotations: {}
+  # -- NATS connection configuration for the operator
+  nats:
+    # -- NATS server URL
+    url: "nats://nats:4222"
+    tls:
+      # -- Path inside container to TLS CA certificate file
+      ca: ""
+      # -- Enable TLS handshake first mode
+      handshakeFirst: false
+    # -- Path inside container to NATS credentials file
+    credentials: ""
+  # -- Additional volumes for the operator deployment
+  extraVolumes: []
+  # -- Additional volume mounts for the operator container
+  extraVolumeMounts: []
 
 gateway:
   enabled: true
@@ -82,6 +97,20 @@ runtime:
     repository: wasmcloud/wash
     pull_policy: Always
     tag: "2.0.0-rc.7"
+  # -- NATS connection configuration for the runtime hosts
+  nats:
+    # -- NATS server URL for scheduler communication
+    schedulerUrl: "nats://nats:4222"
+    # -- NATS server URL for data communication
+    dataUrl: "nats://nats:4222"
+    # -- Path inside container to NATS credentials file for scheduler connection
+    schedulerCredentials: ""
+    # -- Path inside container to NATS credentials file for data connection
+    dataCredentials: ""
+  # -- Additional volumes for all runtime host deployments
+  extraVolumes: []
+  # -- Additional volume mounts for all runtime host containers
+  extraVolumeMounts: []
   hostGroups:
     - name: default
       replicas: 1
