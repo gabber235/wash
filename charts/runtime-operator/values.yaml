@@ -101,6 +101,8 @@ runtime:
   extraVolumes: []
   # -- Additional volume mounts for all runtime host containers
   extraVolumeMounts: []
+  # -- Additional environment variables for all runtime host containers
+  extraEnv: []
   hostGroups:
     - name: default
       replicas: 1
@@ -111,10 +113,42 @@ runtime:
       http:
         enabled: true
         port: 80
+      # -- SurrealDB plugin configuration for this host group
+      # When enabled, the wash runtime will connect to SurrealDB and expose
+      # the seamlezz:surrealdb interface to components
+      surrealdb:
+        # -- Enable SurrealDB plugin
+        enabled: false
+        # -- SurrealDB connection URL (e.g., ws://surrealdb:8000)
+        url: ""
+        # -- SurrealDB namespace
+        namespace: "test"
+        # -- SurrealDB database
+        database: "test"
+        # -- SurrealDB authentication type: root, namespace, or database
+        auth: "root"
+        # -- SurrealDB username (use existingSecret for production)
+        username: ""
+        # -- SurrealDB password (use existingSecret for production)
+        password: ""
+        # -- Use existing secret for credentials
+        # The secret should have 'username' and 'password' keys
+        existingSecret: ""
+      # -- Additional environment variables for this host group's containers
+      # Example:
+      # extraEnv:
+      #   - name: MY_VAR
+      #     value: "my-value"
+      #   - name: SECRET_VAR
+      #     valueFrom:
+      #       secretKeyRef:
+      #         name: my-secret
+      #         key: secret-key
+      extraEnv: []
       resources:
         requests:
           memory: "64Mi"
-          cpu: "250m" # 0.25 CPU cores
+          cpu: "250m"
         limits:
           memory: "512Mi"
-          cpu: "500m" # 0.5 CPU cores
+          cpu: "500m"

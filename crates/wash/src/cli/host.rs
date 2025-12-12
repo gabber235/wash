@@ -8,6 +8,9 @@ use wash_runtime::plugin::wasi_webgpu::WasiWebGpu;
 
 use crate::cli::{CliCommand, CliContext, CommandOutput};
 
+#[cfg(feature = "wasi-surrealdb")]
+use wash_runtime::washlet::plugins::surrealdb::{Auth as SurrealdbAuth, SurrealdbConfig, WasiSurrealdb};
+
 #[derive(Debug, Clone, Args)]
 pub struct HostCommand {
     /// The host group label to assign to the host
@@ -54,6 +57,36 @@ pub struct HostCommand {
     /// Timeout for pulling artifacts from OCI registries
     #[clap(long = "registry-pull-timeout", value_parser = humantime::parse_duration, default_value = "30s")]
     pub registry_pull_timeout: Duration,
+
+    /// SurrealDB connection URL (e.g., ws://localhost:8000)
+    #[cfg(feature = "wasi-surrealdb")]
+    #[clap(long = "surrealdb-url", env = "SURREALDB_URL")]
+    pub surrealdb_url: Option<String>,
+
+    /// SurrealDB namespace
+    #[cfg(feature = "wasi-surrealdb")]
+    #[clap(long = "surrealdb-namespace", env = "SURREALDB_NAMESPACE", default_value = "test")]
+    pub surrealdb_namespace: String,
+
+    /// SurrealDB database
+    #[cfg(feature = "wasi-surrealdb")]
+    #[clap(long = "surrealdb-database", env = "SURREALDB_DATABASE", default_value = "test")]
+    pub surrealdb_database: String,
+
+    /// SurrealDB authentication type (root, namespace, database)
+    #[cfg(feature = "wasi-surrealdb")]
+    #[clap(long = "surrealdb-auth", env = "SURREALDB_AUTH", default_value = "root")]
+    pub surrealdb_auth: String,
+
+    /// SurrealDB username
+    #[cfg(feature = "wasi-surrealdb")]
+    #[clap(long = "surrealdb-username", env = "SURREALDB_USERNAME")]
+    pub surrealdb_username: Option<String>,
+
+    /// SurrealDB password
+    #[cfg(feature = "wasi-surrealdb")]
+    #[clap(long = "surrealdb-password", env = "SURREALDB_PASSWORD")]
+    pub surrealdb_password: Option<String>,
 }
 
 impl CliCommand for HostCommand {
@@ -106,6 +139,42 @@ impl CliCommand for HostCommand {
                     data_nats_client.clone(),
                 ),
             ))?;
+
+        #[cfg(feature = "wasi-surrealdb")]
+        if let (Some(url), Some(username), Some(password)) = (
+            &self.surrealdb_url,
+            &self.surrealdb_username,
+            &self.surrealdb_password,
+        ) {
+            let auth = match self.surrealdb_auth.as_str() {
+                "namespace" => SurrealdbAuth::Namespace {
+                    username: username.clone(),
+                    password: password.clone(),
+                },
+                "database" => SurrealdbAuth::Database {
+                    username: username.clone(),
+                    password: password.clone(),
+                },
+                _ => SurrealdbAuth::Root {
+                    username: username.clone(),
+                    password: password.clone(),
+                },
+            };
+
+            let surrealdb_config = SurrealdbConfig {
+                url: url.clone(),
+                namespace: self.surrealdb_namespace.clone(),
+                database: self.surrealdb_database.clone(),
+                auth,
+            };
+
+            let surrealdb_plugin = WasiSurrealdb::new(surrealdb_config)
+                .await
+                .context("failed to initialize SurrealDB plugin")?;
+
+            cluster_host_builder = cluster_host_builder.with_plugin(Arc::new(surrealdb_plugin))?;
+            info!("SurrealDB plugin enabled");
+        }
 
         if let Some(host_name) = &self.host_name {
             cluster_host_builder = cluster_host_builder.with_host_name(host_name);

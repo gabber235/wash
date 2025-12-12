@@ -54,7 +54,45 @@ spec:
             {{- if and (.webgpu) (.webgpu.enabled) }}
             - "--wasi-webgpu"
             {{- end }}
+            {{- if and (.surrealdb) (.surrealdb.enabled) }}
+            - "--surrealdb-url={{ .surrealdb.url }}"
+            - "--surrealdb-namespace={{ .surrealdb.namespace | default "test" }}"
+            - "--surrealdb-database={{ .surrealdb.database | default "test" }}"
+            - "--surrealdb-auth={{ .surrealdb.auth | default "root" }}"
+            {{- end }}
           imagePullPolicy: {{ $top.Values.runtime.image.pull_policy }}
+          {{- if or ($top.Values.runtime.extraEnv) (.extraEnv) (and (.surrealdb) (.surrealdb.enabled)) }}
+          env:
+            {{- if and (.surrealdb) (.surrealdb.enabled) }}
+            {{- if .surrealdb.existingSecret }}
+            - name: SURREALDB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .surrealdb.existingSecret }}
+                  key: username
+            - name: SURREALDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .surrealdb.existingSecret }}
+                  key: password
+            {{- else }}
+            {{- if .surrealdb.username }}
+            - name: SURREALDB_USERNAME
+              value: {{ .surrealdb.username | quote }}
+            {{- end }}
+            {{- if .surrealdb.password }}
+            - name: SURREALDB_PASSWORD
+              value: {{ .surrealdb.password | quote }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- with $top.Values.runtime.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
           {{- with .resources }}
           resources:
             {{- toYaml . | nindent 12 }}
