@@ -11,76 +11,105 @@ categories = ["wasm"]
 [lib]
 path = "src/lib.rs"
 
-[features]
-default = ["wasi-config", "wasi-logging", "wasi-blobstore", "wasi-keyvalue", "washlet"]
-oci = ["dep:oci-client", "dep:oci-wasm", "dep:docker_credential", "dep:sha2", "dep:wit-component"]
-washlet = ["oci"]
-wasi-config = []
-wasi-logging = []
-wasi-blobstore = []
-wasi-keyvalue = []
-wasi-webgpu = ["dep:wasi-webgpu-wasmtime", "dep:wasi-graphics-context-wasmtime"]
-
 [dependencies]
 anyhow = { workspace = true }
 async-nats = { workspace = true, features = ["ring"] }
 async-trait = { workspace = true }
+base64 = { workspace = true, optional = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
+# OCI dependencies (optional, behind 'oci' feature)
+docker_credential = { workspace = true, optional = true }
 futures = { workspace = true }
 hostname = { workspace = true }
-hyper = { workspace = true, features = ["server", "http1"] }
+hyper = { workspace = true, features = ["http1", "server"] }
 names = { workspace = true }
-semver = { workspace = true }
-sysinfo = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }
-tempfile = { workspace = true }
-tokio = { workspace = true, features = ["sync", "net", "macros"] }
-tracing = { workspace = true }
-wasmtime = { workspace = true, features = ["component-model", "cranelift", "pooling-allocator"] }
-wasmtime-wasi = { workspace = true }
-wasmtime-wasi-io = { workspace = true }
-wasmtime-wasi-http = { workspace = true, features = ["default-send-request"] }
-rustls = { workspace = true, features = ["std", "tls12"] }
-rustls-pemfile = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-tokio-rustls = { workspace = true }
-tokio-util = { workspace = true, features = ["rt"] }
-tonic = { workspace = true, features = [
-    "gzip",
-    "tls-ring",
-    "transport",
-    "router",
-    "codegen",
-    "tls-native-roots",
+oci-client = { workspace = true, features = [
+  "rustls-tls",
+  "rustls-tls-native-roots"
+], optional = true }
+oci-wasm = { workspace = true, features = ["rustls-tls"], optional = true }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true, features = [
+  "semconv_experimental",
 ] }
 pbjson = { workspace = true, default-features = true }
 pbjson-types = { workspace = true, default-features = true }
 prost = { workspace = true, default-features = true }
-tonic-prost = { workspace = true, default-features = true }
-opentelemetry = { workspace = true }
-opentelemetry-semantic-conventions = { workspace = true, features = [
-    "semconv_experimental",
+rustls = { workspace = true, features = ["std", "tls12"] }
+rustls-pemfile = { workspace = true }
+semver = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_cbor = { version = "0.11.2", optional = true }
+serde-content = { version = "0.1.2", optional = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true, optional = true }
+# SurrealDB dependencies (optional, behind 'wasi-surrealdb' feature)
+surrealdb = { version = "2.2.1", optional = true }
+sysinfo = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "net", "sync"] }
+tokio-rustls = { workspace = true }
+tokio-util = { workspace = true, features = ["rt"] }
+tonic = { workspace = true, features = [
+  "codegen",
+  "gzip",
+  "router",
+  "tls-native-roots",
+  "tls-ring",
+  "transport",
 ] }
-opentelemetry_sdk = { workspace = true }
+tonic-prost = { workspace = true, default-features = true }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 wasi-graphics-context-wasmtime = { git = "https://github.com/wasi-gfx/wasi-gfx-runtime.git", rev = "fffd275ad1abb23817c720309570059d8304c61a", optional = true }
 wasi-webgpu-wasmtime = { git = "https://github.com/wasi-gfx/wasi-gfx-runtime.git", rev = "fffd275ad1abb23817c720309570059d8304c61a", optional = true }
-
-# OCI dependencies (optional, behind 'oci' feature)
-docker_credential = { workspace = true, optional = true }
-oci-client = { workspace = true, optional = true, features = ["rustls-tls", "rustls-tls-native-roots"] }
-oci-wasm = { workspace = true, optional = true, features = ["rustls-tls"] }
-sha2 = { workspace = true, optional = true }
+wasmtime = { workspace = true, features = [
+  "component-model",
+  "cranelift",
+  "pooling-allocator"
+] }
+wasmtime-wasi = { workspace = true }
+wasmtime-wasi-http = { workspace = true, features = ["default-send-request"] }
+wasmtime-wasi-io = { workspace = true }
 wit-component = { workspace = true, optional = true }
+
+[dev-dependencies]
+gag = "1.0"
+reqwest = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing-subscriber = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true, default-features = true }
-tonic-prost-build = { workspace = true, default-features = true }
 pbjson-build = { workspace = true, default-features = true }
+tonic-prost-build = { workspace = true, default-features = true }
 
-[dev-dependencies]
-tokio = { workspace = true, features = ["full"] }
-tracing-subscriber = { workspace = true }
-reqwest = { workspace = true }
-gag = "1.0"
+[features]
+default = [
+  "washlet",
+  "wasi-blobstore",
+  "wasi-config",
+  "wasi-keyvalue",
+  "wasi-logging"
+]
+oci = [
+  "dep:docker_credential",
+  "dep:oci-client",
+  "dep:oci-wasm",
+  "dep:sha2",
+  "dep:wit-component"
+]
+washlet = ["oci"]
+wasi-blobstore = []
+wasi-config = []
+wasi-keyvalue = []
+wasi-logging = []
+wasi-surrealdb = [
+  "dep:base64",
+  "dep:serde_cbor",
+  "dep:serde-content",
+  "dep:surrealdb"
+]
+wasi-webgpu = ["dep:wasi-graphics-context-wasmtime", "dep:wasi-webgpu-wasmtime"]

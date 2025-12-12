@@ -1,3 +1,5 @@
+#[cfg(feature = "wasi-surrealdb")]
+pub mod surrealdb;
 pub mod wasi_blobstore;
 pub mod wasi_config;
 pub mod wasi_keyvalue;
