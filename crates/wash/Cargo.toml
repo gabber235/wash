@@ -22,6 +22,10 @@ path = "src/lib.rs"
 name = "wash"
 path = "src/main.rs"
 
+[features]
+default = ["wasi-surrealdb"]
+wasi-surrealdb = ["wash-runtime/wasi-surrealdb"]
+
 [badges]
 maintenance = { status = "actively-developed" }
 
