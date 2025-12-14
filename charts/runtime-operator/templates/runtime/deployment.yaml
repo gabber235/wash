@@ -43,7 +43,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
-          {{- if and (.surrealdb) (.surrealdb.enabled) }}
+            {{- if and (.surrealdb) (.surrealdb.enabled) }}
             {{- if .surrealdb.existingSecret }}
             - name: SURREALDB_USERNAME
               valueFrom:
@@ -95,6 +95,9 @@ spec:
             {{- end }}
             {{- if and (.webgpu) (.webgpu.enabled) }}
             - "--wasi-webgpu"
+            {{- end }}
+            {{- if $top.Values.runtime.allowInsecureRegistries }}
+            - "--allow-insecure-registries"
             {{- end }}
             {{- if and (.surrealdb) (.surrealdb.enabled) }}
             - "--surrealdb-url={{ .surrealdb.url }}"

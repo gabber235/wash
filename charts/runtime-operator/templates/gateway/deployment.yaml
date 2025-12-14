@@ -26,6 +26,9 @@ spec:
           image: {{ printf "%s/%s" $registry .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag | default .Chart.AppVersion }}
           args:
             - "-bind-addr=0.0.0.0:8000"
+            {{- if .Values.gateway.devMode }}
+            - "-dev-mode"
+            {{- end }}
             {{- with .Values.gateway.fallbackEndpoint }}
             - "-fallback-endpoint={{ . }}"
             {{- end }}
