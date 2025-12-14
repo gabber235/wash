@@ -28,11 +28,6 @@ spec:
       containers:
         - name: host
           image: {{ printf "%s/%s" $registry $top.Values.runtime.image.repository }}:{{ $top.Values.runtime.image.tag | default $top.Chart.AppVersion }}
-          env:
-            - name: WASMCLOUD_HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
           args:
             - "host"
             - "--host-name=$(WASMCLOUD_HOST_IP)"
@@ -54,6 +49,9 @@ spec:
             {{- if and (.webgpu) (.webgpu.enabled) }}
             - "--wasi-webgpu"
             {{- end }}
+            {{- if $top.Values.runtime.allowInsecureRegistries }}
+            - "--allow-insecure-registries"
+            {{- end }}
             {{- if and (.surrealdb) (.surrealdb.enabled) }}
             - "--surrealdb-url={{ .surrealdb.url }}"
             - "--surrealdb-namespace={{ .surrealdb.namespace | default "test" }}"
@@ -61,8 +59,11 @@ spec:
             - "--surrealdb-auth={{ .surrealdb.auth | default "root" }}"
             {{- end }}
           imagePullPolicy: {{ $top.Values.runtime.image.pull_policy }}
-          {{- if or ($top.Values.runtime.extraEnv) (.extraEnv) (and (.surrealdb) (.surrealdb.enabled)) }}
           env:
+            - name: WASMCLOUD_HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
             {{- if and (.surrealdb) (.surrealdb.enabled) }}
             {{- if .surrealdb.existingSecret }}
             - name: SURREALDB_USERNAME
@@ -92,7 +93,6 @@ spec:
             {{- with .extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-          {{- end }}
           {{- with .resources }}
           resources:
             {{- toYaml . | nindent 12 }}

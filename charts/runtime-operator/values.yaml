@@ -56,6 +56,8 @@ operator:
 
 gateway:
   enabled: true
+  # -- Enable development mode logging for the gateway (maps to -dev-mode)
+  devMode: false
   # -- Fallback endpoint when no workloads are available. Example: "http://notfound.svc.cluster.local"
   fallbackEndpoint: ""
   image:
@@ -74,6 +76,8 @@ gateway:
     annotations: {}
 
 runtime:
+  # -- Allow insecure (HTTP) OCI registries when pulling artifacts
+  allowInsecureRegistries: false
   serviceAccount:
     # -- Specifies whether a service account should be created
     create: true
