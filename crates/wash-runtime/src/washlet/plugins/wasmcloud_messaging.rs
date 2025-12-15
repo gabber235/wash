@@ -230,11 +230,14 @@ impl HostPlugin for WasmcloudMessaging {
                         match proxy
                         .wasmcloud_messaging_handler()
                         .call_handle_message(store, &msg).await {
-                            Ok(_) => {
-                                debug!("Message handled successfully");
+                            Ok(Ok(())) => {
+                                debug!("Message '{}' handled successfully", msg.subject);
+                            }
+                            Ok(Err(e)) => {
+                                warn!("Error handling message: {e}");
                             }
                             Err(e) => {
-                                warn!("Error handling message: {e}");
+                                warn!("Internal Error handling message: {e}");
                             }
                         }
 
