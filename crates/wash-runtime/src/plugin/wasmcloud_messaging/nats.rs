@@ -254,11 +254,14 @@ impl HostPlugin for NatsMessaging {
                         match proxy
                         .wasmcloud_messaging_handler()
                         .call_handle_message(store, &msg).instrument(span).await {
-                            Ok(_) => {
-                                debug!("Message handled successfully");
+                            Ok(Ok(())) => {
+                                debug!("Message '{}' handled successfully", msg.subject);
+                            }
+                            Ok(Err(e)) => {
+                                warn!("Error handling message: {e}");
                             }
                             Err(e) => {
-                                warn!("Error handling message: {e}");
+                                warn!("Internal Error handling message: {e}");
                             }
                         }
 
