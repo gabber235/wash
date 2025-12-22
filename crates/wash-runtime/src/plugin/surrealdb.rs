@@ -306,7 +306,7 @@ impl bindings::seamlezz::surrealdb::call::Host for ActiveCtx<'_> {
                     }
                 }
                 Err(e) => {
-                    tracing::debug!("Error taking result at index {}: {:?}", i, e);
+                    tracing::trace!("Error taking result at index {}: {:?}", i, e);
                     res.push(Err(e.to_string()));
                 }
             };
