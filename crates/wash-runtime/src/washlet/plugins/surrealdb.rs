@@ -9,10 +9,10 @@ use std::sync::Arc;
 
 use anyhow::Context as _;
 use serde_content::{Number, Serializer, Value as Content};
+use surrealdb::Surreal;
 use surrealdb::engine::any::Any;
 use surrealdb::opt::auth::{Database, Namespace, Root};
 use surrealdb::sql;
-use surrealdb::Surreal;
 use tokio::sync::RwLock;
 use wasmtime::component::HasSelf;
 
@@ -155,9 +155,9 @@ fn into_content(value: sql::Value) -> anyhow::Result<Content<'static>> {
         sql::Value::Geometry(v) => match v {
             sql::Geometry::Point(v) => serializer.serialize(v).context("Could not serialize point"),
             sql::Geometry::Line(v) => serializer.serialize(v).context("Could not serialize line"),
-            sql::Geometry::Polygon(v) => {
-                serializer.serialize(v).context("Could not serialize polygon")
-            }
+            sql::Geometry::Polygon(v) => serializer
+                .serialize(v)
+                .context("Could not serialize polygon"),
             sql::Geometry::MultiPoint(v) => serializer
                 .serialize(v)
                 .context("Could not serialize multipoint"),
@@ -173,9 +173,7 @@ fn into_content(value: sql::Value) -> anyhow::Result<Content<'static>> {
             _ => anyhow::bail!("Could not serialize geometry"),
         },
         sql::Value::Bytes(v) => Ok(Content::Bytes(Cow::Owned(v.into()))),
-        sql::Value::Thing(v) => serializer
-            .serialize(v)
-            .context("Could not serialize thing"),
+        sql::Value::Thing(v) => serializer.serialize(v).context("Could not serialize thing"),
         sql::Value::Param(v) => serializer
             .serialize(v.0)
             .context("Could not serialize param"),
@@ -185,24 +183,12 @@ fn into_content(value: sql::Value) -> anyhow::Result<Content<'static>> {
         sql::Value::Table(v) => serializer
             .serialize(v.0)
             .context("Could not serialize table"),
-        sql::Value::Mock(v) => serializer
-            .serialize(v)
-            .context("Could not serialize mock"),
-        sql::Value::Regex(v) => serializer
-            .serialize(v)
-            .context("Could not serialize regex"),
-        sql::Value::Cast(v) => serializer
-            .serialize(v)
-            .context("Could not serialize cast"),
-        sql::Value::Block(v) => serializer
-            .serialize(v)
-            .context("Could not serialize block"),
-        sql::Value::Range(v) => serializer
-            .serialize(v)
-            .context("Could not serialize range"),
-        sql::Value::Edges(v) => serializer
-            .serialize(v)
-            .context("Could not serialize edges"),
+        sql::Value::Mock(v) => serializer.serialize(v).context("Could not serialize mock"),
+        sql::Value::Regex(v) => serializer.serialize(v).context("Could not serialize regex"),
+        sql::Value::Cast(v) => serializer.serialize(v).context("Could not serialize cast"),
+        sql::Value::Block(v) => serializer.serialize(v).context("Could not serialize block"),
+        sql::Value::Range(v) => serializer.serialize(v).context("Could not serialize range"),
+        sql::Value::Edges(v) => serializer.serialize(v).context("Could not serialize edges"),
         sql::Value::Future(v) => serializer
             .serialize(v)
             .context("Could not serialize future"),
@@ -218,12 +204,8 @@ fn into_content(value: sql::Value) -> anyhow::Result<Content<'static>> {
         sql::Value::Expression(v) => serializer
             .serialize(v)
             .context("Could not serialize expression"),
-        sql::Value::Query(v) => serializer
-            .serialize(v)
-            .context("Could not serialize query"),
-        sql::Value::Model(v) => serializer
-            .serialize(v)
-            .context("Could not serialize model"),
+        sql::Value::Query(v) => serializer.serialize(v).context("Could not serialize query"),
+        sql::Value::Model(v) => serializer.serialize(v).context("Could not serialize model"),
         sql::Value::Closure(v) => serializer
             .serialize(v)
             .context("Could not serialize closure"),
@@ -326,7 +308,7 @@ impl bindings::seamlezz::surrealdb::call::Host for Ctx {
                     }
                 }
                 Err(e) => {
-                    tracing::debug!("Error taking result at index {}: {:?}", i, e);
+                    tracing::trace!("Error taking result at index {}: {:?}", i, e);
                     res.push(Err(e.to_string()));
                 }
             };

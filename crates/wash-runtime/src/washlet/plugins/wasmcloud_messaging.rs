@@ -30,6 +30,9 @@ use crate::washlet::plugins::WorkloadTracker;
 pub struct ComponentData {
     subscriptions: Vec<String>,
     cancel_token: tokio_util::sync::CancellationToken,
+    workload_name: String,
+    workload_namespace: String,
+    component_id: String,
 }
 
 #[derive(Clone)]
@@ -59,20 +62,55 @@ impl Host for Ctx {
             return Ok(Err("plugin not available".to_string()));
         };
 
+        let (workload_name, workload_namespace, component_id) = {
+            let tracker = plugin.tracker.read().await;
+            match tracker.get_component_data(&self.component_id.to_string()) {
+                Some(data) => (
+                    data.workload_name.clone(),
+                    data.workload_namespace.clone(),
+                    data.component_id.clone(),
+                ),
+                None => (String::new(), String::new(), self.component_id.to_string()),
+            }
+        };
+
         let timeout_duration = std::time::Duration::from_millis(timeout_ms as u64);
-        let request_future = plugin.client.request(subject, body.into());
+        let request_future = plugin.client.request(subject.clone(), body.into());
 
         let resp = match tokio::time::timeout(timeout_duration, request_future).await {
             Ok(Ok(msg)) => msg,
             Ok(Err(e)) => {
-                warn!("failed to send request: {e}");
+                warn!(
+                    workload.component_id = component_id,
+                    workload.name = workload_name,
+                    workload.namespace = workload_namespace,
+                    subject,
+                    "failed to send request: {e}"
+                );
                 return Ok(Err(format!("failed to send request: {e}")));
             }
             Err(_) => {
-                warn!("request timed out after {timeout_ms}ms");
+                warn!(
+                    workload.component_id = component_id,
+                    workload.name = workload_name,
+                    workload.namespace = workload_namespace,
+                    subject,
+                    timeout_ms,
+                    "request timed out"
+                );
                 return Ok(Err(format!("request timed out after {timeout_ms}ms")));
             }
         };
+
+        debug!(
+            workload.component_id = component_id,
+            workload.name = workload_name,
+            workload.namespace = workload_namespace,
+            subject,
+            timeout_ms,
+            "request completed successfully"
+        );
+
         let reply_to = resp.reply.as_ref().map(|r| r.to_string());
         Ok(Ok(types::BrokerMessage {
             subject: resp.subject.to_string(),
@@ -87,11 +125,36 @@ impl Host for Ctx {
             return Ok(Err("plugin not available".to_string()));
         };
 
+        let (workload_name, workload_namespace, component_id) = {
+            let tracker = plugin.tracker.read().await;
+            match tracker.get_component_data(&self.component_id.to_string()) {
+                Some(data) => (
+                    data.workload_name.clone(),
+                    data.workload_namespace.clone(),
+                    data.component_id.clone(),
+                ),
+                None => (String::new(), String::new(), self.component_id.to_string()),
+            }
+        };
+
+        let subject = msg.subject.clone();
+        let reply_to = msg.reply_to.clone();
+
         plugin
             .client
             .publish(msg.subject, msg.body.into())
             .await
             .context("failed to send message")?;
+
+        debug!(
+            workload.component_id = component_id,
+            workload.name = workload_name,
+            workload.namespace = workload_namespace,
+            subject,
+            reply_to = reply_to.as_deref().unwrap_or("<none>"),
+            "message published"
+        );
+
         Ok(Ok(()))
     }
 }
@@ -145,6 +208,9 @@ impl HostPlugin for WasmcloudMessaging {
                 ComponentData {
                     cancel_token: tokio_util::sync::CancellationToken::new(),
                     subscriptions: raw_subscriptions,
+                    workload_name: component_handle.workload_name().to_string(),
+                    workload_namespace: component_handle.workload_namespace().to_string(),
+                    component_id: component_handle.id().to_string(),
                 },
             );
         }
@@ -157,10 +223,15 @@ impl HostPlugin for WasmcloudMessaging {
         workload: &ResolvedWorkload,
         component_id: &str,
     ) -> anyhow::Result<()> {
-        let (cancel_token, subjects) = {
+        let (cancel_token, subjects, workload_name, workload_namespace) = {
             let lock = self.tracker.read().await;
             match lock.get_component_data(component_id) {
-                Some(data) => (data.cancel_token.clone(), data.subscriptions.clone()),
+                Some(data) => (
+                    data.cancel_token.clone(),
+                    data.subscriptions.clone(),
+                    data.workload_name.clone(),
+                    data.workload_namespace.clone(),
+                ),
                 None => return Ok(()),
             }
         };
@@ -209,14 +280,24 @@ impl HostPlugin for WasmcloudMessaging {
                         };
                         let mut store = match workload.new_store(&component_id).await {
                             Err(e) => {
-                                warn!("failed to create store for component {component_id}: {e}");
+                                warn!(
+                                    workload.component_id = component_id,
+                                    workload.name = workload_name,
+                                    workload.namespace = workload_namespace,
+                                    "failed to create store: {e}"
+                                );
                                 continue;
                             }
                             Ok(s) => s,
                         };
                         let proxy = match pre.instantiate_async(&mut store).await {
                             Err(e) => {
-                                warn!("failed to instantiate component {component_id}: {e}");
+                                warn!(
+                                    workload.component_id = component_id,
+                                    workload.name = workload_name,
+                                    workload.namespace = workload_namespace,
+                                    "failed to instantiate component: {e}"
+                                );
                                 continue;
                             }
                             Ok(p) => p,
@@ -231,13 +312,31 @@ impl HostPlugin for WasmcloudMessaging {
                         .wasmcloud_messaging_handler()
                         .call_handle_message(store, &msg).await {
                             Ok(Ok(())) => {
-                                debug!("Message '{}' handled successfully", msg.subject);
+                                debug!(
+                                    workload.component_id = component_id,
+                                    workload.name = workload_name,
+                                    workload.namespace = workload_namespace,
+                                    subject = msg.subject,
+                                    "message handled successfully"
+                                );
                             }
                             Ok(Err(e)) => {
-                                warn!("Error handling message: {e}");
+                                warn!(
+                                    workload.component_id = component_id,
+                                    workload.name = workload_name,
+                                    workload.namespace = workload_namespace,
+                                    subject = msg.subject,
+                                    "error handling message: {e}"
+                                );
                             }
                             Err(e) => {
-                                warn!("Internal Error handling message: {e}");
+                                warn!(
+                                    workload.component_id = component_id,
+                                    workload.name = workload_name,
+                                    workload.namespace = workload_namespace,
+                                    subject = msg.subject,
+                                    "internal error handling message: {e}"
+                                );
                             }
                         }
 
