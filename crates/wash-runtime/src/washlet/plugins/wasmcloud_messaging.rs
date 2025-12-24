@@ -140,11 +140,19 @@ impl Host for Ctx {
         let subject = msg.subject.clone();
         let reply_to = msg.reply_to.clone();
 
-        plugin
-            .client
-            .publish(msg.subject, msg.body.into())
-            .await
-            .context("failed to send message")?;
+        if let Some(reply_to) = reply_to.clone() {
+            plugin
+                .client
+                .publish_with_reply(subject.clone(), reply_to, msg.body.into())
+                .await
+                .context("failed to send message")?;
+        } else {
+            plugin
+                .client
+                .publish(subject.clone(), msg.body.into())
+                .await
+                .context("failed to send message")?;
+        }
 
         debug!(
             workload.component_id = component_id,
