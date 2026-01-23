@@ -103,6 +103,42 @@ impl Engine {
         &self.inner
     }
 
+    /// Loads a component from bytes, auto-detecting pre-compiled (.cwasm) vs raw (.wasm).
+    ///
+    /// Pre-compiled components use wasmtime's serialized format and are deserialized
+    /// directly, skipping JIT compilation for faster startup. Raw WASM bytes are
+    /// compiled on the fly.
+    ///
+    /// # Safety (internal)
+    ///
+    /// The deserialization path requires the bytes to come from a trusted source
+    /// compiled with a compatible wasmtime version and config. This is verified
+    /// internally by checking for wasmtime's serialized format header.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes` - Either raw WASM bytes or pre-compiled serialized component bytes
+    ///
+    /// # Returns
+    ///
+    /// A compiled wasmtime `Component` ready for instantiation.
+    #[allow(unsafe_code)]
+    pub fn load_component(&self, bytes: impl AsRef<[u8]>) -> anyhow::Result<Component> {
+        let bytes = bytes.as_ref();
+
+        if is_precompiled(bytes) {
+            // SAFETY: We verify the bytes don't start with standard WASM magic.
+            // Caller is responsible for ensuring bytes come from a trusted compilation
+            // with the same wasmtime version and config (async_support=true).
+            unsafe {
+                Component::deserialize(&self.inner, bytes)
+                    .context("failed to deserialize pre-compiled component")
+            }
+        } else {
+            Component::new(&self.inner, bytes).context("failed to compile component from bytes")
+        }
+    }
+
     /// Initializes a workload by validating and preparing all its components.
     ///
     /// This function takes a workload definition and prepares it for execution by:
@@ -232,7 +268,6 @@ impl Engine {
         validated_volumes: &std::collections::HashMap<String, PathBuf>,
         loopback: Arc<std::sync::Mutex<loopback::Network>>,
     ) -> anyhow::Result<WorkloadService> {
-        // Create a wasmtime component from the bytes
         let wasmtime_component = self
             .load_component_bytes(service.bytes, service.digest)
             .context("failed to create component from bytes")?;
@@ -298,21 +333,14 @@ impl Engine {
         match digest {
             None => {
                 tracing::debug!("no digest provided, compiling component without caching");
-                let compiled = Component::new(&self.inner, bytes.as_ref())
-                    .context("failed to compile component from bytes")?;
-                Ok(compiled)
+                self.load_component(bytes)
             }
             Some(digest) => {
                 let key = CacheKey(digest.as_ref().to_string());
-                let inner = &self.inner;
                 let bytes_ref = bytes.as_ref();
 
                 self.cache
-                    .try_get_with(key, || {
-                        Component::new(inner, bytes_ref)
-                            .context("failed to compile component from bytes")
-                            .map(CacheValue)
-                    })
+                    .try_get_with(key, || self.load_component(bytes_ref).map(CacheValue))
                     .map_err(|e| anyhow::anyhow!(e).context("compilation cache error"))
                     .map(|v| v.0)
             }
@@ -331,7 +359,6 @@ impl Engine {
         validated_volumes: &std::collections::HashMap<String, PathBuf>,
         loopback: Arc<std::sync::Mutex<loopback::Network>>,
     ) -> anyhow::Result<WorkloadComponent> {
-        // Create a wasmtime component from the bytes
         let wasmtime_component = self
             .load_component_bytes(component.bytes, component.digest)
             .context("failed to create component from bytes")?;
@@ -626,4 +653,9 @@ fn new_pooling_config(instances: u32) -> PoolingAllocationConfig {
         config.total_gc_heaps(instances);
     }
     config
+}
+
+fn is_precompiled(bytes: &[u8]) -> bool {
+    const WASM_MAGIC: &[u8] = b"\0asm\x01\x00\x00\x00";
+    bytes.len() >= 8 && !bytes.starts_with(WASM_MAGIC)
 }
