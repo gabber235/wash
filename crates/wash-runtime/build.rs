@@ -33,8 +33,11 @@ fn check_and_rebuild_fixtures(
     let wasm_dir = workspace_dir.join("crates/wash-runtime/tests/wasm");
 
     if !fixtures_dir.exists() {
-        println!("No fixtures dir found at {}", fixtures_dir.display());
-        anyhow::bail!("No fixtures dir found");
+        println!(
+            "cargo:warning=No fixtures dir found at {}. Skipping fixture rebuild.",
+            fixtures_dir.display()
+        );
+        return Ok(());
     }
 
     // Create wasm directory if it doesn't exist
