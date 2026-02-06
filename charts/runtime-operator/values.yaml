@@ -107,6 +107,10 @@ runtime:
     schedulerUrl: "nats://nats:4222"
     # -- NATS server URL for data communication
     dataUrl: "nats://nats:4222"
+    # -- Override TLS CA path for scheduler NATS connection (default: /runtime-cert/ca.crt)
+    schedulerTlsCa: ""
+    # -- Override TLS CA path for data NATS connection (default: /data-cert/ca.crt)
+    dataTlsCa: ""
     # -- Path inside container to NATS credentials file for scheduler connection
     schedulerCredentials: ""
     # -- Path inside container to NATS credentials file for data connection

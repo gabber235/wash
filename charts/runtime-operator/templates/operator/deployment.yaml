@@ -19,9 +19,11 @@ spec:
         {{- include "runtime-operator.labels" . | nindent 8 }}
     spec:
       volumes:
+        {{- if .Values.global.certificates.generate }}
         - name: operator-cert
           secret:
             secretName: {{ .Values.global.certificates.operatorCertSecretName }}
+        {{- end }}
         {{- with .Values.operator.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -32,17 +34,21 @@ spec:
           image: {{ printf "%s/%s" $registry .Values.operator.image.repository }}:{{ .Values.operator.image.tag | default .Chart.AppVersion }}
           args:
             - "-nats-url={{ .Values.operator.nats.url }}"
-            - "-nats-ca=/operator-cert/ca.crt"
+            - "-nats-ca={{ .Values.operator.nats.tls.ca | default "/operator-cert/ca.crt" }}"
+            {{- if .Values.global.certificates.generate }}
             - "-nats-client-cert=/operator-cert/tls.crt"
             - "-nats-client-key=/operator-cert/tls.key"
+            {{- end }}
             {{- if .Values.operator.nats.credentials }}
             - "-nats-creds={{ .Values.operator.nats.credentials }}"
             {{- end }}
           imagePullPolicy: {{ .Values.operator.image.pull_policy }}
           volumeMounts:
+            {{- if .Values.global.certificates.generate }}
             - name: operator-cert
               mountPath: /operator-cert
               readOnly: true
+            {{- end }}
             {{- with .Values.operator.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

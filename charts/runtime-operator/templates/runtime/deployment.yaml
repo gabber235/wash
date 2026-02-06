@@ -24,12 +24,14 @@ spec:
         {{- include "runtime-operator.labels" $top | nindent 8 }}
     spec:
       volumes:
+        {{- if $top.Values.global.certificates.generate }}
         - name: runtime-cert
           secret:
             secretName: {{ $top.Values.global.certificates.runtimeCertSecretName }}
         - name: data-cert
           secret:
             secretName: {{ $top.Values.global.certificates.dataCertSecretName }}
+        {{- end }}
         {{- with $top.Values.runtime.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -77,16 +79,20 @@ spec:
             - "--host-name=$(WASMCLOUD_HOST_IP)"
             - "--host-group={{ .name }}"
             - "--scheduler-nats-url={{ $top.Values.runtime.nats.schedulerUrl }}"
-            - "--scheduler-nats-tls-ca=/runtime-cert/ca.crt"
+            - "--scheduler-nats-tls-ca={{ $top.Values.runtime.nats.schedulerTlsCa | default "/runtime-cert/ca.crt" }}"
+            {{- if $top.Values.global.certificates.generate }}
             - "--scheduler-nats-tls-cert=/runtime-cert/tls.crt"
             - "--scheduler-nats-tls-key=/runtime-cert/tls.key"
+            {{- end }}
             {{- if $top.Values.runtime.nats.schedulerCredentials }}
             - "--scheduler-nats-creds={{ $top.Values.runtime.nats.schedulerCredentials }}"
             {{- end }}
             - "--data-nats-url={{ $top.Values.runtime.nats.dataUrl }}"
-            - "--data-nats-tls-ca=/data-cert/ca.crt"
+            - "--data-nats-tls-ca={{ $top.Values.runtime.nats.dataTlsCa | default "/data-cert/ca.crt" }}"
+            {{- if $top.Values.global.certificates.generate }}
             - "--data-nats-tls-cert=/data-cert/tls.crt"
             - "--data-nats-tls-key=/data-cert/tls.key"
+            {{- end }}
             {{- if $top.Values.runtime.nats.dataCredentials }}
             - "--data-nats-creds={{ $top.Values.runtime.nats.dataCredentials }}"
             {{- end }}
@@ -107,12 +113,14 @@ spec:
             {{- end }}
           imagePullPolicy: {{ $top.Values.runtime.image.pull_policy }}
           volumeMounts:
+            {{- if $top.Values.global.certificates.generate }}
             - name: runtime-cert
               mountPath: /runtime-cert
               readOnly: true
             - name: data-cert
               mountPath: /data-cert
               readOnly: true
+            {{- end }}
             {{- with $top.Values.runtime.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
