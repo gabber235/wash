@@ -12,11 +12,15 @@ USER nonroot
 # copy source code
 COPY . .
 
-# build static binary
-RUN cargo build --release --bin wash
+# build with cached dependencies and compilation artifacts
+RUN --mount=type=cache,target=/home/nonroot/.cargo/registry,uid=65532 \
+    --mount=type=cache,target=/home/nonroot/.cargo/git,uid=65532 \
+    --mount=type=cache,target=/src/target,uid=65532 \
+    cargo build --release --bin wash && \
+    cp target/release/wash /tmp/wash
 
 # Release image
 FROM cgr.dev/chainguard/wolfi-base
 RUN apk add --no-cache git
-COPY --from=builder /src/target/release/wash /usr/local/bin/wash
+COPY --from=builder /tmp/wash /usr/local/bin/wash
 ENTRYPOINT ["/usr/local/bin/wash"]

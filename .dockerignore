@@ -1,2 +1,8 @@
 target/
 **/tests/fixtures/
+.git/
+runtime-operator/
+charts/
+docs/
+*.md
+.github/
