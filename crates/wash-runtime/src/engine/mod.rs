@@ -656,6 +656,6 @@ fn new_pooling_config(instances: u32) -> PoolingAllocationConfig {
 }
 
 fn is_precompiled(bytes: &[u8]) -> bool {
-    const WASM_MAGIC: &[u8] = b"\0asm\x01\x00\x00\x00";
-    bytes.len() >= 8 && !bytes.starts_with(WASM_MAGIC)
+    const WASM_MAGIC: &[u8] = b"\0asm";
+    bytes.len() >= 4 && !bytes.starts_with(WASM_MAGIC)
 }
